@@ -21,9 +21,21 @@
     <ClCompile Include="Graph.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GridPrimalDual.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GridGraph.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graph.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridPrimalDual.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GridGraph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

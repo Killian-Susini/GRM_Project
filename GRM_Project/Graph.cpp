@@ -2,17 +2,19 @@
 #include <vector>
 #include <list>
 #include <queue>
+#include <stack>
 #include <limits>
 #include <unordered_map>
+
 #include "Graph.h"
+
+
+
 
 Graph::Graph()
 {
     nbNodes = 0;
 }
-
-
-
 
 
 void Graph::addNode(int vertex)
@@ -159,6 +161,63 @@ int Graph::max_flow(int vertex_source, int vertex_sink)
     for (int u = 0; u < n; u++) {
         flow += F[u][t];
     }
+
+    // compute the cut set
+    std::stack<int> active_vertices; // stack for dfs
+    auto cut_set = std::vector<bool>(n,false);
+    
+
+    active_vertices.push(s);
+    cut_set[s] = true;
+    while (!active_vertices.empty())
+    {
+        int u = active_vertices.top();
+        active_vertices.pop();
+        for (auto edge : adjacencyList[u]) {
+            int v = edge.first;
+            if (!cut_set[v] && (C[u][v] - F[u][v] > 0)) { //if not seen and residual left
+                cut_set[v] = true;
+                active_vertices.push(v);
+            }
+        }
+    }
+    
+    struct CutEdges { int u, v, weight; };
+
+    //compute cute edges
+    std::vector<CutEdges> cut_edges;
+    for (int u = 0; u < n; u++) {
+        if (cut_set[u]) {
+            for (auto edge : adjacencyList[u]) {
+                int v = edge.first;
+                if (!cut_set[v] && (C[u][v] > 0)) { //if not in set and has capacity 
+                    cut_edges.push_back({ u, v, edge.second });
+                }
+            }
+        }
+    }
+
+
+    //print cut set
+    std::cout << "cut set:" << std::endl;
+    for (int i = 0; i < n; i++) {
+        if (cut_set[i]) {
+            std::cout << vertices[i] << " ";
+        }
+    }
+    std::cout << std::endl;
+
+
+    //print cut edges
+    std::cout << "cut edges:" << std::endl;
+    for ( auto edge : cut_edges) {
+        std::cout << "(" << vertices[edge.u] << "," << vertices[edge.v] << ":" << edge.weight << ") " << std::endl;
+    }
+    std::cout << std::endl;
+
+
+
+
     return flow;
 }
 

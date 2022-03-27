@@ -8,29 +8,85 @@
 #include <limits>
 #include <unordered_map>
 
+#include <opencv2/opencv.hpp>
+
 #include "Graph.h"
+#include "GridPrimalDual.h"
 
 
-int main()
+
+
+
+int main(int argc, char* argv[])
 {
-    auto G = Graph();
+    // pixel labelling with pott model energy, see parmi04.pdf, "An Experimental Comparison ofMin - Cut / Max - Flow Algorithms for Energy Minimization in Vision"
 
-    G.addEdge(0, 1, 15);
-    G.addEdge(0, 2, 4);
-    G.addEdge(1, 3, 12);
-    G.addEdge(2, 4, 10);
-    G.addEdge(3, 2, 3);
-    G.addEdge(4, 1, 5);
-    G.addEdge(3, 5, 8);
-    G.addEdge(4, 5, 10);
+
+
+
+
+
+
+
+
+    /*auto G = Graph();
+
+    G.addEdge(1, 2, 10);
+    G.addEdge(1, 3, 5);
+    G.addEdge(1, 4, 15);
+    G.addEdge(2, 3, 4);
+    G.addEdge(2, 5, 9);
+    G.addEdge(2, 6, 15);
+    G.addEdge(3, 4, 4);
+    G.addEdge(3, 6, 8);
+    G.addEdge(4, 7, 30);
+    G.addEdge(5, 6, 15);
+    G.addEdge(5, 8, 10);
+    G.addEdge(6, 7, 15);
+    G.addEdge(6, 8, 10);
+    G.addEdge(7, 3, 6);
+    G.addEdge(7, 8, 10);
 
     G.printAdjacencyList();
 
-    int max_flow = G.max_flow(0,5);
+    int max_flow = G.max_flow(1,8);
     std::cout << max_flow << std::endl;
-    
+
+
+    return 0;*/
+    if (argc != 2) {
+        std::cout << "usage: .exe Path/To/Image" << std::endl;
+        return -1;
+    }
+    cv::Mat image = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
+
+    if (image.empty())
+    {
+        std::cout << "Image Note Found!!!" << std::endl;
+        return -1;
+    }
+    std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
+
+
+    //cv::imshow("window title", image);
+
+    //cv::waitKey(0);
+
+    auto GPD = GridPrimalDual(image, 256);
+    GPD.printPrimalDual();
+
+
+    // Define Markov Random Field Model
+
+
+
+
+
 
     return 0;
+
+
+
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
