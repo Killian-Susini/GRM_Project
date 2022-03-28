@@ -1,5 +1,6 @@
 #include <vector>
 #include <array>
+#include <stack>
 #include <opencv2/opencv.hpp>
 
 struct FourNeighboors
@@ -26,12 +27,43 @@ public:
 	int singletonPotential(int row, int column, int c);
 
 	void preEditDuals(int c);
-	void updateDualsPrimal(int c);
+	void updateDualsPrimals(int c);
 	void postEditDuals(int c);
 
 private:
+	int number_of_relabel;
+
 	int truncatedSquaredDifference(int a, int b, int truncation);
 	int label_height(int row, int column, int c);
 	int load(int prow,int pcol,int qrow,int qcol,int a,int b);
+
+	void recomputeHeights(std::vector<std::vector<int>>& height, std::vector<std::vector<NodesNeighboors>>& C, std::vector<std::vector<NodesNeighboors>>& F);
+
+	void push2Sink(int prow, int pcol,
+		std::vector<std::vector<int>>& excess, 
+		std::vector<std::vector<NodesNeighboors>>& C, 
+		std::vector<std::vector<NodesNeighboors>>& F);
+	void pushFromSource(int qrow, int qcol, 
+		std::vector<std::vector<int>>& excess, 
+		std::vector<std::vector<int>>& source2p_capacity, 
+		std::vector<std::vector<int>>& source2p_flow, 
+		std::vector<std::vector<NodesNeighboors>>& F);
+	void push2Source(int prow, int pcol, 
+		std::vector<std::vector<int>>& excess, 
+		std::vector<std::vector<int>>& source2p_flow,
+		std::vector<std::vector<NodesNeighboors>>& C,
+		std::vector<std::vector<NodesNeighboors>>& F);
+	
+	void relabel(int prow, int pcol, 
+		std::vector<std::vector<int>>& height, 
+		std::vector<std::vector<NodesNeighboors>>& C, 
+		std::vector<std::vector<NodesNeighboors>>& F);
+	void discharge(int prow, int pcol, 
+		std::vector<std::vector<int>>& excess, 
+		std::vector<std::vector<int>>& height,
+		std::vector<std::vector<int>>& source2p_capacity, 
+		std::vector<std::vector<int>>& source2p_flow, 
+		std::vector<std::vector<NodesNeighboors>>& C, 
+		std::vector<std::vector<NodesNeighboors>>& F);
 };
 

@@ -10,23 +10,16 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "Graph.h"
+#include "Graph_perso.h"
 #include "GridPrimalDual.h"
 
 
-
+#include <stdio.h>
 
 
 int main(int argc, char* argv[])
 {
     // pixel labelling with pott model energy, see parmi04.pdf, "An Experimental Comparison ofMin - Cut / Max - Flow Algorithms for Energy Minimization in Vision"
-
-
-
-
-
-
-
 
 
     /*auto G = Graph();
@@ -54,6 +47,11 @@ int main(int argc, char* argv[])
 
 
     return 0;*/
+
+    /// try only 4 levels
+
+
+
     if (argc != 2) {
         std::cout << "usage: .exe Path/To/Image" << std::endl;
         return -1;
@@ -67,25 +65,76 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
+    cv::resize(image, image, cv::Size(50, 50));
+    std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
     //cv::imshow("window title", image);
 
     //cv::waitKey(0);
 
     auto GPD = GridPrimalDual(image, 256);
-    GPD.printPrimalDual();
+    //GPD.printPrimalDual();
 
+    std::vector < std::vector< int >> x_old;
+    for (int row = 0; row < GPD.rows; row++)
+    {
+        x_old.push_back(std::vector<int>());
+        for (int column = 0; column < GPD.columns; column++)
+        {
+            x_old[row].push_back(GPD.x[row][column]);
+        }
+    }
+    bool cont = true;
+    while (cont) {
+        for (int row = 0; row < GPD.rows; row++)
+        {
+            for (int column = 0; column < GPD.columns; column++)
+            {
+                x_old[row][column] = GPD.x[row][column];
+            }
+        }
+        cont = false;
 
-    // Define Markov Random Field Model
+        for (int c = 0; c < 256; c++) {
+            GPD.preEditDuals(c);
+            //std::cout << "done pre-edit n" << c << std::endl;
+            GPD.updateDualsPrimals(c);
+            //std::cout << "done duals and primals update n" << c << std::endl;
+            GPD.postEditDuals(c);
+            //std::cout << "done post-edit n" << c << std::endl;
+        }
+        for (int row = 0; row < GPD.rows; row++)
+        {
+            for (int column = 0; column < GPD.columns; column++)
+            {
+                if (x_old[row][column] != GPD.x[row][column]) {
+                    cont = true;
+                }
+            }
+        }
+    }
+    
+    // make image from x
+    cv::Mat greyImgForVecCopy = cv::Mat(cv::Size(GPD.rows, GPD.columns), CV_8U);
+    auto vec = std::vector<uint8_t>(GPD.rows * GPD.columns, 0);
+    for (int row = 0; row < GPD.rows; row++)
+    {
+        for (int column = 0; column < GPD.columns; column++)
+        {
+            vec[GPD.columns * row + column] = GPD.x[row][column];
+        }
+    }
 
+    std::memcpy(greyImgForVecCopy.data, vec.data(), vec.size() * sizeof(uint8_t));
 
+    cv::imshow("Grey Image Vec Copy", greyImgForVecCopy);
 
+    cv::imshow("window title", image);
 
-
+    cv::waitKey(0);
+    cv::destroyAllWindows();
 
     return 0;
-
-
 
 }
 
