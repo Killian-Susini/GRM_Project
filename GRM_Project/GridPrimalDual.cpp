@@ -1,12 +1,14 @@
 #include "GridPrimalDual.h"
+#include "Graph.h"
 //#include <random>
 
-GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels)
+GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _distance_multiplier)
 {
 	image = _image;
 	rows = (int)image.rows;
 	columns = (int)image.cols;
 	number_of_labels = _number_of_labels;
+	distance_multiplier = _distance_multiplier;
 	//std::default_random_engine generator;
 	//std::uniform_int_distribution<int> distribution(0, number_of_labels-1);
 
@@ -67,12 +69,54 @@ void GridPrimalDual::printPrimalDual()
 int GridPrimalDual::distance(int a, int b)
 {
 	//wpq = 2
-	return 10*truncatedSquaredDifference(a,b,200);
+	return distance_multiplier*truncatedSquaredDifference(a,b,1,200);
 }
 
 int GridPrimalDual::singletonPotential(int row, int column, int c)
 {
-	return truncatedSquaredDifference(image.at<uchar>(row,column), c, 10000);
+	return truncatedSquaredDifference(image.at<uchar>(row,column), c, 1, 10000);
+}
+
+void GridPrimalDual::optimize()
+{
+	std::vector < std::vector< int >> x_old;
+	for (int row = 0; row < rows; row++)
+	{
+		x_old.push_back(std::vector<int>());
+		for (int column = 0; column < columns; column++)
+		{
+			x_old[row].push_back(x[row][column]);
+		}
+	}
+	bool cont = true;
+	while (cont) {
+		for (int row = 0; row < rows; row++)
+		{
+			for (int column = 0; column < columns; column++)
+			{
+				x_old[row][column] = x[row][column];
+			}
+		}
+		cont = false;
+
+		for (int c = 0; c < number_of_labels; c++) {
+			preEditDuals(c);
+			//std::cout << "done pre-edit n" << c << std::endl;
+			updateDualsPrimals(c);
+			//std::cout << "done duals and primals update n" << c << std::endl;
+			postEditDuals(c);
+			//std::cout << "done post-edit n" << c << std::endl;
+		}
+		for (int row = 0; row < rows; row++)
+		{
+			for (int column = 0; column < columns; column++)
+			{
+				if (x_old[row][column] != x[row][column]) {
+					cont = true;
+				}
+			}
+		}
+	}
 }
 
 void GridPrimalDual::preEditDuals(int c)
@@ -115,9 +159,127 @@ void GridPrimalDual::updateDualsPrimals(int c)
 {
 	// construct Graph (Capacities and Flow)
 
-	//std::cout << "constructing the graph" << std::endl;
+	std::cout << "constructing the graph " << c << std::endl;
+	std::vector<std::vector<int>> pos2nodeIndex;
+
+	pos2nodeIndex.reserve(rows);
 
 
+	Graph* g = new Graph(/*estimated # of nodes*/ rows * columns, /*estimated # of edges*/ 4 * rows * columns);
+	int node_id = 0;
+	for (int row = 0; row < rows; row++) {
+		pos2nodeIndex.push_back(std::vector<int>());
+		pos2nodeIndex[row].reserve(columns);
+		for (int column = 0; column < columns; column++) {
+
+			pos2nodeIndex[row].push_back(node_id);
+			//printf("(%d, %d)", std::max(label_height(row, column, x[row][column]) - label_height(row, column, c), 0), std::max(label_height(row, column, c) - label_height(row, column, x[row][column]), 0));
+			if (label_height(row, column, x[row][column]) - label_height(row, column, c) > 0) {
+				g->add_terminal_cap(
+					node_id,
+					true,
+					label_height(row, column, x[row][column]) - label_height(row, column, c));
+			}
+			else {
+				g->add_terminal_cap(
+					node_id,
+					false,
+					label_height(row, column, c) - label_height(row, column, x[row][column]));
+			}
+			node_id++;
+		}
+		//printf("\n");
+	}
+
+
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++) {
+			int node_p_id = pos2nodeIndex[row][column], node_q_id;
+			int x_p = x[row][column];
+			int x_q;
+			if (row > 0) { // has up
+				node_q_id = pos2nodeIndex[row - 1][column];
+				x_q = x[row - 1][column];
+				if (x_p != c && x_q != c) {
+					//printf("(%d, %d)", std::max(distance(c, x_q) - load(row, column, row - 1, column, c, x_q), 0), std::max(distance(x_p, c) - load(row, column, row - 1, column, x_p, c), 0));
+
+					g->add_arc_pair(node_p_id, node_q_id,
+						std::max(distance(c, x_q) - load(row, column, row - 1, column, c, x_q), 0),
+						std::max(distance(x_p, c) - load(row, column, row - 1, column, x_p, c), 0));
+				}
+				else {
+					g->add_arc_pair(node_p_id, node_q_id, 0, 0);
+				}
+			}
+			if (column > 0) { // has left
+				node_q_id = pos2nodeIndex[row][column - 1];
+				x_q = x[row][column - 1];
+				if (x_p != c && x_q != c) {
+					g->add_arc_pair(node_p_id, node_q_id,
+						std::max(distance(c, x_q) - load(row, column, row, column - 1, c, x_q), 0),
+						std::max(distance(x_p, c) - load(row, column, row, column - 1, x_p, c), 0));
+				}
+				else {
+					g->add_arc_pair(node_p_id, node_q_id, 0, 0);
+				}
+			}
+		}
+	}
+	int flow = g->max_flow();
+	printf("Flow = %d\n", flow);
+
+
+	//update duals
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++) {
+			int node_p = pos2nodeIndex[row][column];
+			if (row < rows - 1) { // there is a down node
+				int node_q = pos2nodeIndex[row+1][column];
+				//std::cout << node_p << " " << node_q << std::endl;
+				int pflow;
+				if (g->get_pflow(node_p, node_q, pflow)){
+					y[row][column][c].down += pflow;
+				}
+				else {
+					std::cout << "no such nodes, problem with the code";
+					exit(-1);
+				}
+
+			}
+
+			if (column < columns - 1) { // there is a right node
+				int node_q = pos2nodeIndex[row][column+1];
+				//std::cout << node_p << " " << node_q << std::endl;
+				int pflow;
+				if (g->get_pflow(node_p, node_q, pflow)) {
+					y[row][column][c].right += pflow;
+				}
+				else {
+					std::cout << "no such nodes, problem with the code";
+					exit(-1);
+				}
+			}
+		}
+	}
+
+
+	//update primals
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++) {
+			if (g->has_nonsat_path_to_source(pos2nodeIndex[row][column])) {
+				x[row][column] = c;
+			}
+		}
+	}
+
+
+
+
+	delete g;
+	return;
+
+
+	/*
 	std::vector<std::vector<int>> excess;
 	std::vector<std::vector<int>> height;
 	std::vector<std::vector<int>> seen;
@@ -189,7 +351,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 
 
 	//compute true heights first by compute the distance of each node to the sink
-	//recomputeHeights(height, C, F); FAUXXXXX
+	//recomputeHeights(height, C, F);
 
 	number_of_relabel = 0;
 	// solve with max flow, keep the flows
@@ -231,8 +393,9 @@ void GridPrimalDual::updateDualsPrimals(int c)
 	std::cout << "Flow = " << flow << std::endl;
 
 	//std::cout << "updating duals" << std::endl;
-
+	*/
 	// update duals
+	/*
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
 			if (column < columns - 1) { // there is a right node
@@ -251,6 +414,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 	
 	// update primals
 	//dfs
+	
 	std::stack<std::pair<int,int>> active_vertices; // stack for dfs
 	std::vector<std::vector<bool>> cut_set;
 	cut_set.reserve(rows);
@@ -258,6 +422,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 		cut_set.push_back(std::vector<bool>(columns, false));
 	}
 	//expand source first
+
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
 			if (source2p_capacity[row][column] - source2p_flow[row][column] > 0) {
@@ -295,7 +460,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 				x[row][column] = c;
 			}
 		}
-	}
+	}*/
 }
 
 void GridPrimalDual::postEditDuals(int c)
@@ -347,11 +512,11 @@ void GridPrimalDual::postEditDuals(int c)
 }
 
 
-int GridPrimalDual::truncatedSquaredDifference(int a, int b, int truncation)
+int GridPrimalDual::truncatedSquaredDifference(int a, int b, int kappa, int truncation)
 {
 	// Truncated quadratic
 	int dist = a - b;
-	return MIN(dist*dist, truncation);
+	return MIN(kappa*dist*dist, truncation);
 }
 
 int GridPrimalDual::label_height(int row, int column, int c)
@@ -406,13 +571,13 @@ void GridPrimalDual::recomputeHeights(std::vector<std::vector<int>>& height, std
 	std::queue<std::pair<int, int>> node_queue;
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
-			if (C[row][column].sink > 0) {
+			if ((C[row][column].sink - F[row][column].sink) > 0) {
 				height[row][column] = 1;
 				node_queue.push(std::pair<int, int>(row, column));
 			}
 			else
 			{
-				height[row][column] = INT_MAX;
+				height[row][column] = rows*columns+3;
 			}
 		}
 	}
@@ -420,22 +585,22 @@ void GridPrimalDual::recomputeHeights(std::vector<std::vector<int>>& height, std
 	while (!node_queue.empty()) {
 		auto p = node_queue.front();
 		node_queue.pop();
-		const int row = p.first;
-		const int column = p.second;
+		int row = p.first;
+		int column = p.second;
 		max_height = std::max(max_height, height[row][column]);
-		if (row > 0 && height[row - 1][column] == INT_MAX && (C[row - 1][column].down - F[row - 1][column].down) > 0) {
+		if (row > 0 && height[row - 1][column] == (rows * columns + 3) && (C[row - 1][column].down - F[row - 1][column].down) > 0) {
 			height[row - 1][column] = height[row][column] + 1;
 			node_queue.push(std::pair<int, int>(row - 1, column));
 		}
-		if (row < rows - 1 && height[row + 1][column] == INT_MAX && (C[row + 1][column].up - F[row + 1][column].up) > 0) {
+		if (row < rows - 1 && height[row + 1][column] == (rows * columns + 3) && (C[row + 1][column].up - F[row + 1][column].up) > 0) {
 			height[row + 1][column] = height[row][column] + 1;
 			node_queue.push(std::pair<int, int>(row + 1, column));
 		}
-		if (column > 0 && height[row][column - 1] == INT_MAX && (C[row][column - 1].right - F[row][column - 1].right) > 0) {
+		if (column > 0 && height[row][column - 1] == (rows * columns + 3) && (C[row][column - 1].right - F[row][column - 1].right) > 0) {
 			height[row][column - 1] = height[row][column] + 1;
 			node_queue.push(std::pair<int, int>(row, column - 1));
 		}
-		if (column < columns - 1 && height[row][column + 1] == INT_MAX && (C[row][column + 1].left - F[row][column + 1].left) > 0) {
+		if (column < columns - 1 && height[row][column + 1] == (rows * columns + 3) && (C[row][column + 1].left - F[row][column + 1].left) > 0) {
 			height[row][column + 1] = height[row][column] + 1;
 			node_queue.push(std::pair<int, int>(row, column + 1));
 		}
@@ -543,8 +708,8 @@ void GridPrimalDual::discharge(int prow, int pcol, std::vector<std::vector<int>>
 		else {
 
 			//number_of_relabel++;
-			//if (number_of_relabel > rows * columns + 2) {
-				// global heuristic
+			//if (number_of_relabel >  rows * columns + 2) {
+				// global relabeling heuristic
 			//	recomputeHeights(height, C, F);
 			//	number_of_relabel = 0;
 			//}

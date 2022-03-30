@@ -10,7 +10,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "Graph_perso.h"
+#include "Graph.h"
 #include "GridPrimalDual.h"
 
 
@@ -21,36 +21,27 @@ int main(int argc, char* argv[])
 {
     // pixel labelling with pott model energy, see parmi04.pdf, "An Experimental Comparison ofMin - Cut / Max - Flow Algorithms for Energy Minimization in Vision"
 
-
-    /*auto G = Graph();
-
-    G.addEdge(1, 2, 10);
-    G.addEdge(1, 3, 5);
-    G.addEdge(1, 4, 15);
-    G.addEdge(2, 3, 4);
-    G.addEdge(2, 5, 9);
-    G.addEdge(2, 6, 15);
-    G.addEdge(3, 4, 4);
-    G.addEdge(3, 6, 8);
-    G.addEdge(4, 7, 30);
-    G.addEdge(5, 6, 15);
-    G.addEdge(5, 8, 10);
-    G.addEdge(6, 7, 15);
-    G.addEdge(6, 8, 10);
-    G.addEdge(7, 3, 6);
-    G.addEdge(7, 8, 10);
-
-    G.printAdjacencyList();
-
-    int max_flow = G.max_flow(1,8);
-    std::cout << max_flow << std::endl;
+    /*
+    auto* G = new Graph(4, 6);
+    G->add_terminal_cap(0, true, 10);
+    G->add_terminal_cap(1, false, 1);
+    G->add_terminal_cap(2, false, 1);
+    G->add_terminal_cap(3, false, 5);
+    G->add_arc_pair(0, 1, 10, 0);
+    G->add_arc_pair(2, 1, 0, 5);
+    G->add_arc_pair(2, 3, 10, 0);
 
 
-    return 0;*/
+    int flow = G->max_flow();
+    std::cout << "Flow = " << flow << std::endl;
 
+
+    delete G;
+    return 0;
+    */
     /// try only 4 levels
 
-
+    
 
     if (argc != 2) {
         std::cout << "usage: .exe Path/To/Image" << std::endl;
@@ -65,54 +56,17 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    cv::resize(image, image, cv::Size(50, 50));
+    cv::resize(image, image, cv::Size(10, 10));
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
     //cv::imshow("window title", image);
 
     //cv::waitKey(0);
 
-    auto GPD = GridPrimalDual(image, 256);
+    auto GPD = GridPrimalDual(image, 256, 200);
     //GPD.printPrimalDual();
 
-    std::vector < std::vector< int >> x_old;
-    for (int row = 0; row < GPD.rows; row++)
-    {
-        x_old.push_back(std::vector<int>());
-        for (int column = 0; column < GPD.columns; column++)
-        {
-            x_old[row].push_back(GPD.x[row][column]);
-        }
-    }
-    bool cont = true;
-    while (cont) {
-        for (int row = 0; row < GPD.rows; row++)
-        {
-            for (int column = 0; column < GPD.columns; column++)
-            {
-                x_old[row][column] = GPD.x[row][column];
-            }
-        }
-        cont = false;
-
-        for (int c = 0; c < 256; c++) {
-            GPD.preEditDuals(c);
-            //std::cout << "done pre-edit n" << c << std::endl;
-            GPD.updateDualsPrimals(c);
-            //std::cout << "done duals and primals update n" << c << std::endl;
-            GPD.postEditDuals(c);
-            //std::cout << "done post-edit n" << c << std::endl;
-        }
-        for (int row = 0; row < GPD.rows; row++)
-        {
-            for (int column = 0; column < GPD.columns; column++)
-            {
-                if (x_old[row][column] != GPD.x[row][column]) {
-                    cont = true;
-                }
-            }
-        }
-    }
+    GPD.optimize();
     
     // make image from x
     cv::Mat greyImgForVecCopy = cv::Mat(cv::Size(GPD.rows, GPD.columns), CV_8U);
@@ -133,6 +87,7 @@ int main(int argc, char* argv[])
 
     cv::waitKey(0);
     cv::destroyAllWindows();
+    
 
     return 0;
 

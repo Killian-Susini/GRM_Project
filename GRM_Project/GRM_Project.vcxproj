@@ -143,14 +143,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Graph_perso.cpp" />
-    <ClCompile Include="GridGraph.cpp" />
+    <ClCompile Include="Graph.cpp" />
     <ClCompile Include="GridPrimalDual.cpp" />
     <ClCompile Include="GRM_Project.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Graph_perso.h" />
-    <ClInclude Include="GridGraph.h" />
+    <ClInclude Include="Graph.h" />
     <ClInclude Include="GridPrimalDual.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
