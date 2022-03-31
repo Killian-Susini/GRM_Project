@@ -12,37 +12,79 @@
 
 #include "Graph.h"
 #include "GridPrimalDual.h"
-
+#include "Stereo.h"
 
 #include <stdio.h>
 
 
 int main(int argc, char* argv[])
 {
-    // pixel labelling with pott model energy, see parmi04.pdf, "An Experimental Comparison ofMin - Cut / Max - Flow Algorithms for Energy Minimization in Vision"
+    if (argc != 3) {
+        std::cout << "usage: .exe Path/To/left Path/To/right" << std::endl;
+        return -1;
+    }
+    cv::Mat left = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
+    if (left.empty())
+    {
+        std::cout << "Image Note Found!!! " << argv[1] << std::endl;
+        return -1;
+    }
+    cv::Mat right = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
+    if (right.empty())
+    {
+        std::cout << "Image Note Found!!! " << argv[2] << std::endl;
+        return -1;
+    }
+    int rows = left.rows;
+    int cols = left.cols;
 
-    /*
-    auto* G = new Graph(4, 6);
-    G->add_terminal_cap(0, true, 10);
-    G->add_terminal_cap(1, false, 1);
-    G->add_terminal_cap(2, false, 1);
-    G->add_terminal_cap(3, false, 5);
-    G->add_arc_pair(0, 1, 10, 0);
-    G->add_arc_pair(2, 1, 0, 5);
-    G->add_arc_pair(2, 3, 10, 0);
+    Stereo stereo = Stereo(3, 16);
+    auto res = stereo.ssd(left, right);
+    
+    cv::Mat disp= cv::Mat(cv::Size(cols, rows), CV_8U);
+    std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
+    
+    
+    auto GPD_stereo = GridPrimalDual(disp, 16, 10, 2, 3, false);
+    //GPD.printPrimalDual();
 
 
-    int flow = G->max_flow();
-    std::cout << "Flow = " << flow << std::endl;
+    GPD_stereo.optimize();
 
+    // make image from x
+    cv::Mat optimized = cv::Mat(cv::Size(GPD_stereo.columns, GPD_stereo.rows), CV_8U);
+    auto opti_vec = std::vector<uint8_t>(GPD_stereo.rows * GPD_stereo.columns, 0);
+    for (int row = 0; row < GPD_stereo.rows; row++)
+    {
+        for (int column = 0; column < GPD_stereo.columns; column++)
+        {
+            opti_vec[GPD_stereo.columns * row + column] = GPD_stereo.x[row][column] * 16;
+            res[GPD_stereo.columns * row + column] = res[GPD_stereo.columns * row + column] * 16;
+        }
+    }
 
-    delete G;
-    return 0;
-    */
-    /// try only 4 levels
+    std::memcpy(optimized.data, opti_vec.data(), opti_vec.size() * sizeof(uint8_t));
+    std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
 
     
+    
+    cv::imshow("orig", disp);
+    cv::imshow("opti", optimized);
 
+
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+
+
+
+
+
+    return 0 ;
+
+
+
+
+    
     if (argc != 2) {
         std::cout << "usage: .exe Path/To/Image" << std::endl;
         return -1;
@@ -56,20 +98,22 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    cv::resize(image, image, cv::Size(10, 10));
+    cv::resize(image, image, cv::Size(128, 128));
+    //cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
     //cv::imshow("window title", image);
 
     //cv::waitKey(0);
 
-    auto GPD = GridPrimalDual(image, 256, 200);
+    auto GPD = GridPrimalDual(image, 256, 1, 200, 10000, true);
     //GPD.printPrimalDual();
+
 
     GPD.optimize();
     
     // make image from x
-    cv::Mat greyImgForVecCopy = cv::Mat(cv::Size(GPD.rows, GPD.columns), CV_8U);
+    cv::Mat greyImgForVecCopy = cv::Mat(cv::Size(GPD.columns, GPD.rows), CV_8U);
     auto vec = std::vector<uint8_t>(GPD.rows * GPD.columns, 0);
     for (int row = 0; row < GPD.rows; row++)
     {

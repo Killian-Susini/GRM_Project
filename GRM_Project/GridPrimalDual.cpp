@@ -1,18 +1,23 @@
 #include "GridPrimalDual.h"
-#include "Graph.h"
+
 //#include <random>
 
-GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _distance_multiplier)
+GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _distance_multiplier, int _dist_trunc, int _singleton_trunc, bool _use_squared)
 {
 	image = _image;
 	rows = (int)image.rows;
 	columns = (int)image.cols;
 	number_of_labels = _number_of_labels;
 	distance_multiplier = _distance_multiplier;
+	dist_trunc = _dist_trunc;
+	singleton_trunc = _singleton_trunc;
+	use_squared = _use_squared;
 	//std::default_random_engine generator;
 	//std::uniform_int_distribution<int> distribution(0, number_of_labels-1);
 
 	//init primals (x) and duals (y) (could init random, here we init with lowest singleton val)
+	g = nullptr;
+	//optimize_step = 0;
 
 	x.reserve(rows);
 	y.reserve(rows);
@@ -68,17 +73,23 @@ void GridPrimalDual::printPrimalDual()
 }
 int GridPrimalDual::distance(int a, int b)
 {
-	//wpq = 2
-	return distance_multiplier*truncatedSquaredDifference(a,b,1,200);
+	if (use_squared)
+		return distance_multiplier*truncatedSquaredDifference(a,b,1,dist_trunc);
+	else
+		return distance_multiplier * truncatedAbsoluteDifference(a, b, 1, dist_trunc);
 }
 
 int GridPrimalDual::singletonPotential(int row, int column, int c)
 {
-	return truncatedSquaredDifference(image.at<uchar>(row,column), c, 1, 10000);
+	if (use_squared)
+		return truncatedSquaredDifference(image.at<uchar>(row,column), c, 1, singleton_trunc);
+	else
+		return truncatedAbsoluteDifference(image.at<uchar>(row, column), c, 1, singleton_trunc);
 }
 
 void GridPrimalDual::optimize()
 {
+	g = new Graph(/*estimated # of nodes*/ rows * columns, /*estimated # of edges*/ 4 * rows * columns);
 	std::vector < std::vector< int >> x_old;
 	for (int row = 0; row < rows; row++)
 	{
@@ -116,7 +127,10 @@ void GridPrimalDual::optimize()
 				}
 			}
 		}
+		//optimize_step++;
 	}
+
+	delete g;
 }
 
 void GridPrimalDual::preEditDuals(int c)
@@ -165,7 +179,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 	pos2nodeIndex.reserve(rows);
 
 
-	Graph* g = new Graph(/*estimated # of nodes*/ rows * columns, /*estimated # of edges*/ 4 * rows * columns);
+	g->reset(); 
 	int node_id = 0;
 	for (int row = 0; row < rows; row++) {
 		pos2nodeIndex.push_back(std::vector<int>());
@@ -225,10 +239,15 @@ void GridPrimalDual::updateDualsPrimals(int c)
 			}
 		}
 	}
-	int flow = g->max_flow();
+	int flow;
+
+	//if (optimize_step >3) 
+	//	flow = g->max_flow();
+	//else
+	flow = g->max_flow_push_relabel();
 	printf("Flow = %d\n", flow);
-
-
+	if (flow == 0)
+		return;
 	//update duals
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
@@ -274,193 +293,6 @@ void GridPrimalDual::updateDualsPrimals(int c)
 
 
 
-
-	delete g;
-	return;
-
-
-	/*
-	std::vector<std::vector<int>> excess;
-	std::vector<std::vector<int>> height;
-	std::vector<std::vector<int>> seen;
-	
-	std::vector<std::vector<NodesNeighboors>> C; // right down left up source sink
-	std::vector<std::vector<NodesNeighboors>> F; // Same
-	std::vector<std::vector<int>> source2p_capacity;
-	std::vector<std::vector<int>> source2p_flow;
-
-	excess.reserve(rows);
-	height.reserve(rows);
-	C.reserve(rows);
-	F.reserve(rows);
-	source2p_capacity.reserve(rows);
-	source2p_flow.reserve(rows);
-	for (int row = 0; row < rows; row++) {
-		excess.push_back(std::vector<int>(columns, 0));
-		height.push_back(std::vector<int>(columns, 0));
-		C.push_back(std::vector<NodesNeighboors>());
-		F.push_back(std::vector<NodesNeighboors>());
-		source2p_capacity.push_back(std::vector<int>());
-		source2p_flow.push_back(std::vector<int>(columns, 0));
-
-		C[row].reserve(columns);
-		F[row].reserve(columns);
-		source2p_capacity[row].reserve(columns);
-		for (int column = 0; column < columns; column++) {
-			C[row].push_back({ 0,0,0,0,0,0 });
-			F[row].push_back({ 0,0,0,0,0,0 });
-
-			// capacities are more complex
-
-			//first from/to source/sink
-			source2p_capacity[row].push_back(std::max(label_height(row,column,x[row][column]) - label_height(row, column, c), 0));
-			C[row][column].sink = std::max(label_height(row, column, c) - label_height(row, column, x[row][column]), 0);
-			
-			//next for the interior nodes, 
-			//it depends on whether one of the involved node is set as c (see fig 6.)
-			int x_p = x[row][column];
-			if (x_p != c) {
-				int x_q;
-				if (row != 0) { // has up
-					x_q = x[row - 1][column];
-					if (x_q != c) {
-						C[row][column].up = std::max(distance(c, x_q) - load(row, column, row - 1,column,c, x_q), 0);
-					}
-				}
-				if (row != rows - 1) { // has down
-					x_q = x[row + 1][column];
-					if (x_q != c) {
-						C[row][column].down = std::max(distance(c, x_q) - load(row, column, row + 1, column, c, x_q), 0);
-					}
-				}
-				if (column != 0) { // has left
-					x_q = x[row][column - 1];
-					if (x_q != c) {
-						C[row][column].left = std::max(distance(c, x_q) - load(row, column, row, column - 1, c, x_q), 0);
-					}
-				}
-				if (column != columns - 1) { // has right
-					x_q = x[row][column + 1];
-					if (x_q != c) {
-						C[row][column].right = std::max(distance(c, x_q) - load(row, column, row, column + 1, c, x_q), 0);
-					}
-				}
-			}// else the 4 caps stay at 0
-		}
-	}
-
-
-	//compute true heights first by compute the distance of each node to the sink
-	//recomputeHeights(height, C, F);
-
-	number_of_relabel = 0;
-	// solve with max flow, keep the flows
-
-	//std::cout << "solving max flow" << std::endl;
-	//push all you can from the source
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			pushFromSource(row, column, excess, source2p_capacity, source2p_flow, F);
-		}
-	}
-
-	std::list<std::pair<int, int>> active_nodes;
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			active_nodes.push_back(std::pair<int,int>(row,column));
-		}
-	}
-
-	auto p = active_nodes.begin();
-	while (p != active_nodes.end()) {
-		int old_height = height[p->first][p->second];
-		discharge(p->first, p->second, excess, height, source2p_capacity, source2p_flow, C, F);
-		if (height[p->first][p->second] > old_height) {
-			// "relabel to front"
-			active_nodes.splice(active_nodes.begin(), active_nodes, p);
-		}
-		else {
-			p++;
-		}
-	}
-
-	int flow = 0;
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			flow += F[row][column].sink;
-		}
-	}
-	std::cout << "Flow = " << flow << std::endl;
-
-	//std::cout << "updating duals" << std::endl;
-	*/
-	// update duals
-	/*
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			if (column < columns - 1) { // there is a right node
-				// A bit complicated with their definition, but here F = f pq - f qp
-				y[row][column][c].right += F[row][column].right;
-			}
-
-			if (row < rows - 1) { // there is a down node
-				y[row][column][c].down += F[row][column].down;
-			}
-		}
-	}
-
-
-	//std::cout << "updating primals" << std::endl;
-	
-	// update primals
-	//dfs
-	
-	std::stack<std::pair<int,int>> active_vertices; // stack for dfs
-	std::vector<std::vector<bool>> cut_set;
-	cut_set.reserve(rows);
-	for (int row = 0; row < rows; row++) {
-		cut_set.push_back(std::vector<bool>(columns, false));
-	}
-	//expand source first
-
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			if (source2p_capacity[row][column] - source2p_flow[row][column] > 0) {
-				cut_set[row][column] = true;
-				active_vertices.push(std::pair<int, int>(row, column));
-			}
-		}
-	}
-	while (!active_vertices.empty())
-	{
-		auto p = active_vertices.top();
-		active_vertices.pop();
-		int row = p.first;
-		int column = p.second;
-		if (column > 0 && !cut_set[row][column - 1] && (C[row][column].left - F[row][column].left > 0)) {
-			cut_set[row][column - 1] = true;
-			active_vertices.push(std::pair<int, int>(row, column - 1));
-		}
-		if (column < columns-1 && !cut_set[row][column + 1] && (C[row][column].right - F[row][column].right > 0)) {
-			cut_set[row][column + 1] = true;
-			active_vertices.push(std::pair<int, int>(row, column + 1));
-		}
-		if (row > 0 && !cut_set[row - 1][column] && (C[row][column].up - F[row][column].up > 0)) {
-			cut_set[row - 1][column] = true;
-			active_vertices.push(std::pair<int, int>(row - 1, column));
-		}
-		if (row < rows-1 && !cut_set[row + 1][column] && (C[row][column].down - F[row][column].down > 0)) {
-			cut_set[row + 1][column] = true;
-			active_vertices.push(std::pair<int, int>(row + 1, column));
-		}
-	}
-	for (int row = 0; row < rows; row++) {
-		for (int column = 0; column < columns; column++) {
-			if (cut_set[row][column]) {
-				x[row][column] = c;
-			}
-		}
-	}*/
 }
 
 void GridPrimalDual::postEditDuals(int c)
@@ -517,6 +349,12 @@ int GridPrimalDual::truncatedSquaredDifference(int a, int b, int kappa, int trun
 	// Truncated quadratic
 	int dist = a - b;
 	return MIN(kappa*dist*dist, truncation);
+}
+
+int GridPrimalDual::truncatedAbsoluteDifference(int a, int b, int kappa, int truncation) {
+	// Truncated absolute
+	int dist = abs(a - b);
+	return MIN(kappa * dist, truncation);
 }
 
 int GridPrimalDual::label_height(int row, int column, int c)

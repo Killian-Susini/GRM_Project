@@ -24,12 +24,18 @@
     <ClCompile Include="GridPrimalDual.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Stereo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graph.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GridPrimalDual.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Stereo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

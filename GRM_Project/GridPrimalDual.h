@@ -2,6 +2,7 @@
 #include <array>
 #include <stack>
 #include <opencv2/opencv.hpp>
+#include "Graph.h"
 
 struct FourNeighboors
 {
@@ -16,12 +17,16 @@ struct NodesNeighboors {
 class GridPrimalDual
 {
 public:
-	int rows, columns, number_of_labels, distance_multiplier;
+	int rows, columns, number_of_labels, distance_multiplier, dist_trunc, singleton_trunc;
+	bool use_squared;
 	cv::Mat image;
 	std::vector < std::vector< int >> x;
 	std::vector< std::vector< std::vector<FourNeighboors> > > y;
+	Graph* g;
+
+	//int optimize_step;
 	
-	GridPrimalDual(cv::Mat _image, int _number_of_labels, int _distance_multiplier);
+	GridPrimalDual(cv::Mat _image, int _number_of_labels, int _distance_multiplier, int _dist_trunc, int _singleton_trunc, bool _use_squared);
 	void printPrimalDual();
 	int distance(int a, int b);
 	int singletonPotential(int row, int column, int c);
@@ -34,6 +39,7 @@ private:
 	int number_of_relabel;
 
 	int truncatedSquaredDifference(int a, int b,int kappa, int truncation);
+	int truncatedAbsoluteDifference(int a, int b, int kappa, int truncation);
 	int label_height(int row, int column, int c);
 	int load(int prow,int pcol,int qrow,int qcol,int a,int b);
 

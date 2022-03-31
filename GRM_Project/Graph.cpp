@@ -87,6 +87,14 @@ int Graph::max_flow()
 	return flow;
 }
 
+void Graph::reset()
+{
+	last_arc = arcs;
+	num_arcs = 0;
+	active_step = 0;
+	memset(nodes, 0, num_nodes * sizeof(node));
+}
+
 Graph::node* Graph::find_augment()
 {
 	active_step++;
@@ -179,3 +187,134 @@ bool Graph::has_nonsat_path_to_source(int node_p)
 	node* p = nodes + node_p;
 	return p->active == active_step; // last find augment has marked them with the last step taken
 }
+
+
+
+int Graph::max_flow_push_relabel()
+{
+
+	active_step = -1; //overloaded from augmenting style implementation to reuse previous code in GridPrimalDual...
+	node* u;
+	std::list<node*> active_nodes;
+	
+	for (u = nodes; u != node_max; u++)
+	{
+		u->active = 0;
+		u->label = 0;
+		if (u->is_connected_to_source) {
+			//push from source all we can
+			u->terminal_flow += u->terminal_cap;
+			u->active += u->terminal_cap;
+		}
+		active_nodes.push_back(u);
+	}
+	
+	auto next_active = active_nodes.begin();
+	int old_label;
+	while (next_active != active_nodes.end())
+	{
+		old_label = (*next_active)->active;
+		discharge(*next_active);
+		if ((*next_active)->active > old_label) {
+			active_nodes.splice(active_nodes.begin(), active_nodes, next_active);
+		}
+		else {
+			next_active++;
+		}
+	}
+
+	//compute max flow from pflow to sink
+	int flow = 0;
+	for (u = nodes; u != node_max; u++)
+	{
+		if (!u->is_connected_to_source) flow += u->terminal_flow;
+	}
+
+	//mark all reachable nodes from source by running dfs
+	std::stack<node*> node_stack;
+	
+	for (u = nodes; u != node_max; u++)
+	{
+		if (u->is_connected_to_source && u->terminal_cap - u->terminal_flow > 0) {
+			u->active = active_step; //overloaded active, GridPrimalDual will use that to know which nodes is recheable (and therefore which x will have their labels changed)
+			node_stack.push(u);
+		}
+	}
+	arc* uv;
+	node* v;
+	while (!node_stack.empty()) {
+		u = node_stack.top();
+		node_stack.pop();
+		for (uv = u->first; uv; uv = uv->next) {
+			v = uv->head;
+			if (v->active != active_step && uv->cap - uv->pflow > 0) {
+				v->active = active_step;
+				node_stack.push(v);
+			}
+		}	
+	}
+	return flow;
+}
+
+void Graph::push(node* u, arc* uv)
+{
+	int max_pushable_flow = std::min(u->active, uv->cap - uv->pflow);
+	
+	uv->pflow += max_pushable_flow;
+	uv->sister->pflow -= max_pushable_flow;
+
+	u->active -= max_pushable_flow;
+	uv->head->active += max_pushable_flow;
+}
+
+
+void Graph::relabel(node* u)
+{
+	int min_neigh_label = INT_MAX;
+	if (u->is_connected_to_source && u->terminal_flow > 0) {
+		min_neigh_label = num_nodes;
+		u->label = min_neigh_label + 1;
+	}
+	for (arc* uv = u->first; uv; uv = uv->next) {
+		if (uv->cap - uv->pflow > 0 && min_neigh_label > uv->head->label) {
+			min_neigh_label = uv->head->label;
+			u->label = min_neigh_label + 1;
+		}
+	}
+}
+
+
+void Graph::discharge(node* u)
+{
+	arc* uv;
+	int old_excess;
+	while (u->active)
+	{
+		old_excess = u->active;
+		if (!u->is_connected_to_source && u->terminal_cap - u->terminal_flow > 0) {
+			//push to sink
+			int max_pushable_flow = std::min(u->active, u->terminal_cap - u->terminal_flow);
+			u->terminal_flow += max_pushable_flow;
+			u->active -= max_pushable_flow;
+		}
+		else if (u->label > num_nodes && u->is_connected_to_source && u->terminal_flow > 0) {
+			//push (back) to source
+			int max_pushable_flow = std::min(u->active, u->terminal_flow);
+			u->terminal_flow -= max_pushable_flow;
+			u->active -= max_pushable_flow;
+		}
+		else {
+			for (uv = u->first; uv; uv = uv->next) {
+				if (u->label > uv->head->label && uv->cap - uv->pflow > 0) {
+					push(u, uv);
+					if (u->active == 0) break;
+				}
+			}
+		}
+
+		if (old_excess == u->active) {
+			relabel(u);
+		}
+	}
+}
+

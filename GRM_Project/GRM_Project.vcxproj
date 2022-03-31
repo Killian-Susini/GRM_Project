@@ -146,10 +146,12 @@
     <ClCompile Include="Graph.cpp" />
     <ClCompile Include="GridPrimalDual.cpp" />
     <ClCompile Include="GRM_Project.cpp" />
+    <ClCompile Include="Stereo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Graph.h" />
     <ClInclude Include="GridPrimalDual.h" />
+    <ClInclude Include="Stereo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
