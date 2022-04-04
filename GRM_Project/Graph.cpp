@@ -84,6 +84,26 @@ int Graph::max_flow()
 		flow += augment(augment_node);
 		augment_node = find_augment();
 	}
+
+	int sflow = 0, tflow = 0, s_sat = 0;
+	for (node * u = nodes; u != node_max; u++)
+	{
+		if (u->is_connected_to_source) {
+			if (u->terminal_cap - u->terminal_flow == 0) {
+				s_sat++;
+			}
+			sflow += u->terminal_flow;
+
+		}
+		else {
+			tflow += u->terminal_flow;
+		}
+	}
+	std::cout << "num_sat " << s_sat << "s and t " << sflow << " " << tflow  << std::endl;
+
+
+
+
 	return flow;
 }
 
@@ -213,9 +233,9 @@ int Graph::max_flow_push_relabel()
 	int old_label;
 	while (next_active != active_nodes.end())
 	{
-		old_label = (*next_active)->active;
+		old_label = (*next_active)->label;
 		discharge(*next_active);
-		if ((*next_active)->active > old_label) {
+		if ((*next_active)->label > old_label) {
 			active_nodes.splice(active_nodes.begin(), active_nodes, next_active);
 		}
 		else {
@@ -224,12 +244,23 @@ int Graph::max_flow_push_relabel()
 	}
 
 	//compute max flow from pflow to sink
-	int flow = 0;
+	int sflow = 0, tflow = 0, s_sat = 0, excess = 0;
 	for (u = nodes; u != node_max; u++)
 	{
-		if (!u->is_connected_to_source) flow += u->terminal_flow;
-	}
+		if (u->is_connected_to_source) { 
+			if (u->terminal_cap - u->terminal_flow == 0) {
+				s_sat++;
+			}
+			sflow += u->terminal_flow; 
+		
+		}
+		else {
+			tflow += u->terminal_flow;
+		}
 
+		excess += u->active;
+	}
+	std::cout << "num_sat " << s_sat << "s and t " << sflow  << " "<< tflow << " " << excess  << std::endl;
 	//mark all reachable nodes from source by running dfs
 	std::stack<node*> node_stack;
 	
@@ -253,7 +284,7 @@ int Graph::max_flow_push_relabel()
 			}
 		}	
 	}
-	return flow;
+	return sflow;
 }
 
 void Graph::push(node* u, arc* uv)

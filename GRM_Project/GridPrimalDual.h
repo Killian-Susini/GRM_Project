@@ -3,6 +3,7 @@
 #include <stack>
 #include <opencv2/opencv.hpp>
 #include "Graph.h"
+#include "GraphTree.h"
 
 struct FourNeighboors
 {
@@ -22,7 +23,8 @@ public:
 	cv::Mat image;
 	std::vector < std::vector< int >> x;
 	std::vector< std::vector< std::vector<FourNeighboors> > > y;
-	Graph* g;
+	std::vector<std::vector<int>> pos2nodeIndex;
+	GraphTree* g;
 
 	//int optimize_step;
 	
@@ -41,35 +43,7 @@ private:
 	int truncatedSquaredDifference(int a, int b,int kappa, int truncation);
 	int truncatedAbsoluteDifference(int a, int b, int kappa, int truncation);
 	int label_height(int row, int column, int c);
+	int label_height_diff(int row, int column, int a, int b);
 	int load(int prow,int pcol,int qrow,int qcol,int a,int b);
-
-	void recomputeHeights(std::vector<std::vector<int>>& height, std::vector<std::vector<NodesNeighboors>>& C, std::vector<std::vector<NodesNeighboors>>& F);
-
-	void push2Sink(int prow, int pcol,
-		std::vector<std::vector<int>>& excess, 
-		std::vector<std::vector<NodesNeighboors>>& C, 
-		std::vector<std::vector<NodesNeighboors>>& F);
-	void pushFromSource(int qrow, int qcol, 
-		std::vector<std::vector<int>>& excess, 
-		std::vector<std::vector<int>>& source2p_capacity, 
-		std::vector<std::vector<int>>& source2p_flow, 
-		std::vector<std::vector<NodesNeighboors>>& F);
-	void push2Source(int prow, int pcol, 
-		std::vector<std::vector<int>>& excess, 
-		std::vector<std::vector<int>>& source2p_flow,
-		std::vector<std::vector<NodesNeighboors>>& C,
-		std::vector<std::vector<NodesNeighboors>>& F);
-	
-	void relabel(int prow, int pcol, 
-		std::vector<std::vector<int>>& height, 
-		std::vector<std::vector<NodesNeighboors>>& C, 
-		std::vector<std::vector<NodesNeighboors>>& F);
-	void discharge(int prow, int pcol, 
-		std::vector<std::vector<int>>& excess, 
-		std::vector<std::vector<int>>& height,
-		std::vector<std::vector<int>>& source2p_capacity, 
-		std::vector<std::vector<int>>& source2p_flow, 
-		std::vector<std::vector<NodesNeighboors>>& C, 
-		std::vector<std::vector<NodesNeighboors>>& F);
 };
 

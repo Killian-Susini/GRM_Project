@@ -19,73 +19,67 @@
 
 int main(int argc, char* argv[])
 {
-    if (argc != 3) {
-        std::cout << "usage: .exe Path/To/left Path/To/right" << std::endl;
-        return -1;
-    }
-    cv::Mat left = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
-    if (left.empty())
-    {
-        std::cout << "Image Note Found!!! " << argv[1] << std::endl;
-        return -1;
-    }
-    cv::Mat right = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
-    if (right.empty())
-    {
-        std::cout << "Image Note Found!!! " << argv[2] << std::endl;
-        return -1;
-    }
-    int rows = left.rows;
-    int cols = left.cols;
-
-    Stereo stereo = Stereo(3, 16);
-    auto res = stereo.ssd(left, right);
-    
-    cv::Mat disp= cv::Mat(cv::Size(cols, rows), CV_8U);
-    std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
-    
-    
-    auto GPD_stereo = GridPrimalDual(disp, 16, 10, 2, 3, false);
-    //GPD.printPrimalDual();
+    if (argc == 3) {
 
 
-    GPD_stereo.optimize();
-
-    // make image from x
-    cv::Mat optimized = cv::Mat(cv::Size(GPD_stereo.columns, GPD_stereo.rows), CV_8U);
-    auto opti_vec = std::vector<uint8_t>(GPD_stereo.rows * GPD_stereo.columns, 0);
-    for (int row = 0; row < GPD_stereo.rows; row++)
-    {
-        for (int column = 0; column < GPD_stereo.columns; column++)
+        cv::Mat left = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
+        if (left.empty())
         {
-            opti_vec[GPD_stereo.columns * row + column] = GPD_stereo.x[row][column] * 16;
-            res[GPD_stereo.columns * row + column] = res[GPD_stereo.columns * row + column] * 16;
+            std::cout << "Image Note Found!!! " << argv[1] << std::endl;
+            return -1;
         }
-    }
+        cv::Mat right = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
+        if (right.empty())
+        {
+            std::cout << "Image Note Found!!! " << argv[2] << std::endl;
+            return -1;
+        }
+        int rows = left.rows;
+        int cols = left.cols;
 
-    std::memcpy(optimized.data, opti_vec.data(), opti_vec.size() * sizeof(uint8_t));
-    std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
+        Stereo stereo = Stereo(5, 16);
+        auto res = stereo.ssd(left, right);
 
-    
-    
-    cv::imshow("orig", disp);
-    cv::imshow("opti", optimized);
-
-
-    cv::waitKey(0);
-    cv::destroyAllWindows();
-
-
-
+        cv::Mat disp = cv::Mat(cv::Size(cols, rows), CV_8U);
+        std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
 
 
-    return 0 ;
+        auto GPD_stereo = GridPrimalDual(disp, 16, 1, 5, 16, false);
+        //GPD.printPrimalDual();
+
+
+        GPD_stereo.optimize();
+
+        // make image from x
+        cv::Mat optimized = cv::Mat(cv::Size(GPD_stereo.columns, GPD_stereo.rows), CV_8U);
+        auto opti_vec = std::vector<uint8_t>(GPD_stereo.rows * GPD_stereo.columns, 0);
+        for (int row = 0; row < GPD_stereo.rows; row++)
+        {
+            for (int column = 0; column < GPD_stereo.columns; column++)
+            {
+                opti_vec[GPD_stereo.columns * row + column] = GPD_stereo.x[row][column] * 16;
+                res[GPD_stereo.columns * row + column] = res[GPD_stereo.columns * row + column] * 16;
+            }
+        }
+
+        std::memcpy(optimized.data, opti_vec.data(), opti_vec.size() * sizeof(uint8_t));
+        std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
+
+
+
+        cv::imwrite("orig.png", disp);
+        cv::imwrite("opti.png", optimized);
+
+
+        cv::waitKey(0);
+        cv::destroyAllWindows();
 
 
 
 
-    
-    if (argc != 2) {
+
+        return 0;
+    } else if (argc != 2) {
         std::cout << "usage: .exe Path/To/Image" << std::endl;
         return -1;
     }
@@ -98,7 +92,7 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    cv::resize(image, image, cv::Size(128, 128));
+    //cv::resize(image, image, cv::Size(512,512));
     //cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
@@ -125,9 +119,9 @@ int main(int argc, char* argv[])
 
     std::memcpy(greyImgForVecCopy.data, vec.data(), vec.size() * sizeof(uint8_t));
 
-    cv::imshow("Grey Image Vec Copy", greyImgForVecCopy);
+    cv::imwrite("smoothed_pep.png", greyImgForVecCopy);
 
-    cv::imshow("window title", image);
+    cv::imwrite("orig_pep.png", image);
 
     cv::waitKey(0);
     cv::destroyAllWindows();
