@@ -96,8 +96,14 @@ bool GraphTree::get_pflow(int node_p, int node_q, int& pflow)
 	return false;
 }
 
+bool GraphTree::has_run()
+{
+	return time_step != 0;
+}
+
 bool GraphTree::has_nonsat_path_to_source(int node_p)
 {
+	//if time_step isn't 0
 	node* p = nodes + node_p;
 	return p->time_step == time_step;
 }

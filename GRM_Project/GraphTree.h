@@ -24,12 +24,15 @@ private:
 
 public:
 	bool get_pflow(int node_p, int node_q, int& pflow);
+
+	bool has_run();
 	bool has_nonsat_path_to_source(int node_p);
 
 	int max_flow();
 	node* growth();
 	int augment(node* node_p);
 	void adopt();
+	
 
 private:
 	int time_step;

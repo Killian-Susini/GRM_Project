@@ -23,6 +23,7 @@ public:
 	cv::Mat image;
 	std::vector < std::vector< int >> x;
 	std::vector< std::vector< std::vector<FourNeighboors> > > y;
+	std::vector < std::vector< std::vector< int >>> height;
 	std::vector<std::vector<int>> pos2nodeIndex;
 	GraphTree* g;
 

@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    //cv::resize(image, image, cv::Size(512,512));
+    //cv::resize(image, image, cv::Size(256,256));
     //cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 

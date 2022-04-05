@@ -26,6 +26,7 @@ public:
 	node* find_augment();
 	int augment(node* node_p);
 	bool get_pflow(int node_p, int node_q, int& pflow);
+	bool has_run();
 	bool has_nonsat_path_to_source(int node_p);
 
 	int max_flow_push_relabel();

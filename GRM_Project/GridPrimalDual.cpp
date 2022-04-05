@@ -54,15 +54,21 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 	}
 
 	y.reserve(number_of_labels);
+	height.reserve(number_of_labels);
 	for (int c = 0; c < number_of_labels; c++)
 	{
 		y.push_back(std::vector< std::vector<FourNeighboors> >());
 		y[c].reserve(rows);
+		height.push_back(std::vector< std::vector<int> >());
+		height[c].reserve(rows);
 		for (int row = 0; row < rows; row++) {
 			y[c].push_back(std::vector<FourNeighboors>());
 			y[c][row].reserve(columns);
+			height[c].push_back(std::vector<int>());
+			height[c][row].reserve(columns);
 			for (int column = 0; column < columns; column++) {
 				y[c][row].push_back({ 0,0 });
+				height[c][row].push_back(singletonPotential(row, column, c));
 			}
 		}
 
@@ -80,11 +86,15 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 			if (column != columns - 1) { // there is a right node
 				x_q = x[row][column + 1];
 				y[x_p][row][column].right = distance(x_p, x_q);
+				height[x_p][row][column] += y[x_p][row][column].right;
+				height[x_p][row][column+1] -= y[x_p][row][column].right;
 			}
 
 			if (row != rows - 1) { // there is a down node
 				x_q = x[row + 1][column];
 				y[x_p][row][column].down = distance(x_p, x_q); //from 0 to wpq dist(x_p,x_q)
+				height[x_p][row][column] += y[x_p][row][column].down;
+				height[x_p][row+1][column] -= y[x_p][row][column].down;
 			}
 
 		}
@@ -182,7 +192,11 @@ void GridPrimalDual::preEditDuals(int c)
 
 
 				if ((y_pq_c + y_qp_xq > distance(c, x_q)) || (y_pq_xp + y_qp_c > distance(x_p, c))) {
+					height[c][row][column] -= y[c][row][column].right;
+					height[c][row][column + 1] += y[c][row][column].right;
 					y[c][row][column].right = distance(c, x_q) - y_qp_xq;
+					height[c][row][column] += y[c][row][column].right;
+					height[c][row][column + 1] -= y[c][row][column].right;
 				}
 			}
 
@@ -195,7 +209,12 @@ void GridPrimalDual::preEditDuals(int c)
 
 
 				if ((y_pq_c + y_qp_xq > distance(c, x_q)) || (y_pq_xp + y_qp_c > distance(x_p, c))) {
+					height[c][row][column] -= y[c][row][column].down;
+					height[c][row+1][column] += y[c][row][column].down;
 					y[c][row][column].down = distance(c, x_q) - y_qp_xq;
+					height[c][row][column] += y[c][row][column].down;
+					height[c][row+1][column] -= y[c][row][column].down;
+					
 				}
 			}
 		}
@@ -213,7 +232,11 @@ void GridPrimalDual::updateDualsPrimals(int c)
 		for (int column = 0; column < columns; column++) {
 			node_id = pos2nodeIndex[row][column];
 			//printf("(%d, %d)", std::max(label_height(row, column, x[row][column]) - label_height(row, column, c), 0), std::max(label_height(row, column, c) - label_height(row, column, x[row][column]), 0));
-			diff_height = label_height_diff(row, column, x[row][column], c);//  label_height(row, column, x[row][column]) - label_height(row, column, c);
+			//diff_height = label_height_diff(row, column, x[row][column], c);//  label_height(row, column, x[row][column]) - label_height(row, column, c);
+			//if (diff_height != height[x[row][column]][row][column] - height[c][row][column]) {
+			//	std::cout << diff_height << " " << height[x[row][column]][row][column] << " " << height[c][row][column] << std::endl;
+			//}
+			diff_height = height[x[row][column]][row][column] - height[c][row][column];
 			if (diff_height > 0) {
 				g->add_terminal_cap(
 					node_id,
@@ -273,8 +296,6 @@ void GridPrimalDual::updateDualsPrimals(int c)
 	//else
 	flow = g->max_flow();
 	printf("Flow = %d\n", flow);
-	if (flow == 0)
-		return;
 	//update duals
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
@@ -285,6 +306,8 @@ void GridPrimalDual::updateDualsPrimals(int c)
 				int pflow;
 				if (g->get_pflow(node_p, node_q, pflow)) {
 					y[c][row][column].down += pflow;
+					height[c][row][column] += pflow;
+					height[c][row + 1][column] -= pflow;
 				}
 				else {
 					std::cout << "no such nodes, problem with the code";
@@ -299,6 +322,9 @@ void GridPrimalDual::updateDualsPrimals(int c)
 				int pflow;
 				if (g->get_pflow(node_p, node_q, pflow)) {
 					y[c][row][column].right += pflow;
+					height[c][row][column] += pflow;
+					height[c][row][column + 1] -= pflow;
+					
 				}
 				else {
 					std::cout << "no such nodes, problem with the code";
@@ -325,6 +351,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 void GridPrimalDual::postEditDuals(int c)
 //technically only useful if one of p or q was changed during the update
 {
+	if (!g->has_run()) return; // no max_flow, no change possible
 	int x_p, x_q;
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
@@ -338,7 +365,12 @@ void GridPrimalDual::postEditDuals(int c)
 
 
 					if (y_pq_xp + y_qp_xq > distance(x_p, x_q)) {
-						y[c][row][column].right = distance(x_p, x_q) + y[x_q][row][column].right;	
+						height[c][row][column] -= y[c][row][column].right;
+						height[c][row][column+1] += y[c][row][column].right;
+						y[c][row][column].right = distance(x_p, x_q) + y[x_q][row][column].right;
+						height[c][row][column] += y[c][row][column].right;
+						height[c][row][column + 1] -= y[c][row][column].right;
+
 					}
 				}
 
@@ -350,8 +382,11 @@ void GridPrimalDual::postEditDuals(int c)
 
 					if (y_pq_xp + y_qp_xq > distance(x_p, x_q)) {
 						// either x_p=c or x_q=c
+						height[c][row][column] -= y[c][row][column].down;
+						height[c][row + 1][column] += y[c][row][column].down;
 						y[c][row][column].down = distance(x_p, x_q) + y[x_q][row][column].down;
-						
+						height[c][row][column] += y[c][row][column].down;
+						height[c][row + 1][column] -= y[c][row][column].down;
 					}
 				}
 			}

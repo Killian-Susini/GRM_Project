@@ -202,8 +202,14 @@ bool Graph::get_pflow(int node_p, int node_q, int& pflow)
 	return false;
 }
 
+bool Graph::has_run()
+{
+	return active_step != 0;
+}
+
 bool Graph::has_nonsat_path_to_source(int node_p)
 {
+	//if (active_step == 0) { return false; } //hasn't run
 	node* p = nodes + node_p;
 	return p->active == active_step; // last find augment has marked them with the last step taken
 }
