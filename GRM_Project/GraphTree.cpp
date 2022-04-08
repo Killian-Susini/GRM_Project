@@ -14,7 +14,6 @@ GraphTree::GraphTree(int _num_nodes, int _num_arcs_max)
 	nodes = (node*)malloc(num_nodes * sizeof(node));
 	arcs = (arc*)malloc(num_arcs_max * sizeof(arc));
 	if (!nodes || !arcs) { std::cout << "Not enough space"; exit(-1); }
-
 	node_max = nodes + num_nodes;
 	last_arc = arcs;
 	num_arcs = 0;

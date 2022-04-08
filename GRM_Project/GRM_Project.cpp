@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     }
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    //cv::resize(image, image, cv::Size(256,256));
+    cv::resize(image, image, cv::Size(256 ,256));
     //cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
     std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
 
     //cv::waitKey(0);
 
-    auto GPD = GridPrimalDual(image, 256, 1, 200, 10000, true);
+    auto GPD = GridPrimalDual(image, 256, 5, 200, 10000, true);
     //GPD.printPrimalDual();
 
 

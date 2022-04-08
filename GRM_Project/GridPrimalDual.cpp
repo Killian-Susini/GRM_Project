@@ -25,7 +25,7 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 	}
 	//std::default_random_engine generator;
 	//std::uniform_int_distribution<int> distribution(0, number_of_labels-1);
-
+	std::cout << rows << " size " << columns << std::endl;
 	//init primals (x) and duals (y) (could init random, here we init with lowest singleton val)
 	g = nullptr;
 	//optimize_step = 0;
@@ -75,7 +75,6 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 	}
 
 
-
 	//adjust ypq(xp) so that load_pq(xp,xq)=ypq(xp)+yqp(xq)=wpq dist(xp,xq) (wpq=2)
 	int x_p, x_q;
 	for (int row = 0; row < rows; row++) {
@@ -85,6 +84,7 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 
 			if (column != columns - 1) { // there is a right node
 				x_q = x[row][column + 1];
+				//std::cout << row << " " << column << " labelr " << x_p << " " << x_q << std::endl;
 				y[x_p][row][column].right = distance(x_p, x_q);
 				height[x_p][row][column] += y[x_p][row][column].right;
 				height[x_p][row][column+1] -= y[x_p][row][column].right;
@@ -92,13 +92,100 @@ GridPrimalDual::GridPrimalDual(cv::Mat _image, int _number_of_labels, int _dista
 
 			if (row != rows - 1) { // there is a down node
 				x_q = x[row + 1][column];
+				//std::cout << row << " " << column << " labeld " << x_p << " " << x_q << std::endl;
 				y[x_p][row][column].down = distance(x_p, x_q); //from 0 to wpq dist(x_p,x_q)
 				height[x_p][row][column] += y[x_p][row][column].down;
 				height[x_p][row+1][column] -= y[x_p][row][column].down;
 			}
 
+			//std::cout << "hey" << std::endl;
+
+			//int count_ys = 0;
+
+			//int count_bad_ys = 0;
+			//for (int row2 = 0; row2 < rows; row2++) {
+			//	for (int column2 = 0; column2 < columns; column2++)
+			//	{
+
+			//		if (row2 > 0) { // has up
+			//			count_ys -= y[x[row2][column2]][row2 - 1][column2].down;
+
+			//			count_bad_ys -= y[x[row2 - 1][column2]][row2 - 1][column2].down;
+			//		}
+			//		if (column2 > 0) { // has left
+			//			count_ys -= y[x[row2][column2]][row2][column2 - 1].right;
+
+			//			count_bad_ys -= y[x[row2][column2 - 1]][row2][column2 - 1].right;
+			//		}
+
+
+			//		if (row2 < rows - 1) {  // has down
+
+			//			count_ys += y[x[row2][column2]][row2][column2].down;
+
+			//			count_bad_ys += y[x[row2 + 1][column2]][row2][column2].down;
+			//		}
+			//		if (column2 < columns - 1) { // has right
+
+			//			count_ys += y[x[row2][column2]][row2][column2].right;
+
+			//			count_bad_ys += y[x[row2][column2 + 1]][row][column].right;
+			//		}
+
+
+
+			//	}
+			//}
+			//int afp = compute_APF_cost();
+			//if ( row != rows - 1)
+			//	std::cout << "checking " << row << " " << column << " " << count_ys << " " << count_bad_ys << " " << afp << " " << height[x_p][row][column] << " " << height[x_p][row + 1][column] << std::endl;
+
+
+
+
+
 		}
 	}
+
+
+	//height.reserve(number_of_labels);
+	//for (int c = 0; c < number_of_labels; c++)
+	//{
+	//	height.push_back(std::vector< std::vector<int> >());
+	//	height[c].reserve(rows);
+	//	for (int row = 0; row < rows; row++) {
+	//		height[c].push_back(std::vector<int>());
+	//		height[c][row].reserve(columns);
+	//		for (int column = 0; column < columns; column++) {
+	//			height[c][row].push_back(singletonPotential(row, column, c));
+	//			if (row > 0) { // has up
+	//				height[c][row][column] -= y[c][row - 1][column].down;
+	//			}
+	//			if (column > 0) { // has left
+	//				height[c][row][column] -= y[c][row][column - 1].right;
+	//			}
+
+
+	//			if (row < rows - 1) {  // has down
+
+	//				height[c][row][column] += y[c][row][column].down;
+	//			}
+	//			if (column < column - 1) { // has right
+
+	//				height[c][row][column] += y[c][row][column].right;
+	//			}
+
+
+
+	//		}
+	//	}
+
+	//}
+	/*std::cout << compute_APF_cost() << std::endl;
+
+
+
+	check();*/
 
 }
 
@@ -141,6 +228,8 @@ void GridPrimalDual::optimize()
 	int loop_count = 0;
 	bool cont = true;
 	while (cont) {
+
+		std::cout << "loop n " << loop_count << std::endl;
 		for (int row = 0; row < rows; row++)
 		{
 			for (int column = 0; column < columns; column++)
@@ -151,12 +240,24 @@ void GridPrimalDual::optimize()
 		cont = false;
 
 		for (int c = 0; c < number_of_labels; c++) {
+			std::cout << "innerloop c " << c << std::endl;
+			//check();
 			preEditDuals(c);
 			//std::cout << "done pre-edit n" << c << std::endl;
+			/*int primal_cost = compute_primal_cost();
+			int dual_cost = compute_dual_cost();
+			int apf = compute_APF_cost();
+			int depth = compute_height_depth();
+			primal_dual_pair.push_back(std::make_pair(primal_cost, dual_cost));
+			std::cout << "innerloop c " << c << " costs: " << primal_cost << " " << dual_cost << " " << apf << " " << depth << std::endl;*/
 			updateDualsPrimals(c);
 			//std::cout << "done duals and primals update n" << c << std::endl;
+			//std::cout << "before" << std::endl;
+			//check();
+			//std::cout << "after" << std::endl;
 			postEditDuals(c);
 			//std::cout << "done post-edit n" << c << std::endl;
+
 		}
 		for (int row = 0; row < rows; row++)
 		{
@@ -168,7 +269,12 @@ void GridPrimalDual::optimize()
 			}
 		}
 		//optimize_step++;
-		std::cout << "loop n " << loop_count << std::endl;
+		/*int primal_cost = compute_primal_cost();
+		int dual_cost = compute_dual_cost();
+		int apf = compute_APF_cost();
+		int depth = compute_height_depth();
+		primal_dual_pair.push_back(std::make_pair(primal_cost, dual_cost));
+		*/
 		loop_count++;
 		
 	}
@@ -356,7 +462,7 @@ void GridPrimalDual::postEditDuals(int c)
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
 			x_p = x[row][column];
-			if (g->has_nonsat_path_to_source(pos2nodeIndex[row][column])) {
+			//if (g->has_nonsat_path_to_source(pos2nodeIndex[row][column])) {
 				if (column != columns - 1) { // there is a right node
 					x_q = x[row][column + 1];
 
@@ -365,9 +471,16 @@ void GridPrimalDual::postEditDuals(int c)
 
 
 					if (y_pq_xp + y_qp_xq > distance(x_p, x_q)) {
+						
 						height[c][row][column] -= y[c][row][column].right;
 						height[c][row][column+1] += y[c][row][column].right;
-						y[c][row][column].right = distance(x_p, x_q) + y[x_q][row][column].right;
+						// either x_p=c or x_q=c
+						if (x_p == c) {
+							y[c][row][column].right = distance(x_p, x_q) + y[x_q][row][column].right;
+						}
+						else if (x_q == c) {
+							y[c][row][column].right = -distance(x_p, x_q) + y[x_p][row][column].right;
+						}
 						height[c][row][column] += y[c][row][column].right;
 						height[c][row][column + 1] -= y[c][row][column].right;
 
@@ -381,19 +494,180 @@ void GridPrimalDual::postEditDuals(int c)
 
 
 					if (y_pq_xp + y_qp_xq > distance(x_p, x_q)) {
-						// either x_p=c or x_q=c
+
+
 						height[c][row][column] -= y[c][row][column].down;
 						height[c][row + 1][column] += y[c][row][column].down;
-						y[c][row][column].down = distance(x_p, x_q) + y[x_q][row][column].down;
+
+						// either x_p=c or x_q=c
+						if (x_p == c) {
+							y[c][row][column].down = distance(x_p, x_q) + y[x_q][row][column].down;
+						}
+						else if (x_q == c) {
+							y[c][row][column].down = -distance(x_p, x_q) + y[x_p][row][column].down;
+						} 
 						height[c][row][column] += y[c][row][column].down;
 						height[c][row + 1][column] -= y[c][row][column].down;
+
 					}
 				}
-			}
+			//}
 		}
 	}
 }
 
+int GridPrimalDual::compute_primal_cost()
+{
+	int cost = 0;
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++)
+		{
+			int tmp_cost = singletonPotential(row, column, x[row][column]);
+			if (row  < rows -1 ) { //has left
+				tmp_cost += distance(x[row][column], x[row +1][column]);
+			}
+			if (column < columns - 1) { //has up
+				tmp_cost += distance(x[row][column], x[row][column + 1]);
+			}
+
+			cost += tmp_cost;
+		}
+	}
+	return cost;
+}
+
+int GridPrimalDual::compute_dual_cost()
+{
+	int cost = 0;
+	int lowest_height;
+	int lowest_height_label;
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++) 
+		{
+			lowest_height = INT_MAX;
+			for (int c = 0; c < number_of_labels; c++) {
+				if (height[c][row][column] < lowest_height) { lowest_height = height[c][row][column]; lowest_height_label = c; }
+			}
+			//if (row == 100 && column == 100) std::cout << "dual " << lowest_height_label << " " << lowest_height << std::endl;
+			cost += lowest_height;
+		}
+	}
+	return cost;
+}
+
+int GridPrimalDual::compute_APF_cost() {
+	int cost = 0;
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++)
+		{
+			
+			cost += height[x[row][column]][row][column];
+			//if (row == 100 && column == 100) std::cout << "APF " << x[row][column] << " " << height[x[row][column]][row][column] << std::endl;
+		}
+	}
+	return cost;
+}
+
+int GridPrimalDual::compute_height_depth()
+{
+	int depth = 0;
+	int lowest_height;
+	int lowest_height_label;
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++)
+		{
+			lowest_height = INT_MAX;
+			for (int c = 0; c < number_of_labels; c++) {
+				if (height[c][row][column] < lowest_height) { lowest_height = height[c][row][column]; lowest_height_label = c; }
+			}
+			depth += lowest_height - height[x[row][column]][row][column];
+		}
+	}
+	return depth;
+}
+
+void GridPrimalDual::check()
+{
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++)
+		{
+			if (row < rows-1) {
+				if (load(row, column, row + 1, column, x[row][column], x[row + 1][column]) != distance(x[row][column], x[row + 1][column])) {
+					std::cout << row << " " << column << " " << load(row, column, row + 1, column, x[row][column], x[row + 1][column]) << " " << distance(x[row][column], x[row + 1][column]) << std::endl;
+					exit(-1010);
+				}
+				if (load(row, column, row + 1, column, x[row][column], x[row + 1][column]) != y[x[row][column]][row][column].down - y[x[row + 1][column]][row][column].down) {
+					std::cout << row << " " << column << " " << load(row, column, row + 1, column, x[row][column], x[row + 1][column]) << " " << y[x[row][column]][row][column].down << " " << y[x[row + 1][column]][row][column].down << std::endl;
+					exit(-211);
+				}
+			}
+			if (column < columns - 1) {
+				if (load(row, column, row, column + 1, x[row][column], x[row][column + 1]) != distance(x[row][column], x[row][column + 1])) {
+					std::cout << row << " " << column << " " << load(row, column, row, column+1, x[row][column], x[row][column+1]) << " " << distance(x[row][column], x[row][column+1]) << std::endl;
+					exit(-312);
+				}
+				if (load(row, column, row, column + 1, x[row][column], x[row][column + 1]) != y[x[row][column]][row][column].right - y[x[row][column + 1]][row][column].right) {
+					std::cout << row << " " << column << " " << load(row, column, row, column + 1, x[row][column], x[row][column + 1]) << " " << y[x[row][column]][row][column].right << " " << y[x[row][column + 1]][row][column].right << std::endl;
+					exit(-413);
+				}
+			}
+		}
+	}
+	int count_singleton = 0;
+	int count_dist = 0;
+	int count_ys = 0;
+
+	//int count_bad_ys = 0;
+	for (int row = 0; row < rows; row++) {
+		for (int column = 0; column < columns; column++)
+		{
+
+			if (row > 0 ) { // has up
+				count_ys -= y[x[row][column]][row-1][column].down;
+
+				//count_bad_ys -= y[x[row - 1][column]][row - 1][column].down;
+			}
+			if (column > 0 ) { // has left
+				count_ys -= y[x[row][column]][row][column-1].right;
+
+				//count_bad_ys -= y[x[row][column - 1]][row][column - 1].right;
+			}
+
+
+			if (row < rows - 1) {  // has down
+				count_dist += distance(x[row][column], x[row + 1][column]);
+
+				count_ys += y[x[row][column]][row][column].down;
+
+				//count_bad_ys += y[x[row + 1][column]][row][column].down;
+			}
+			if (column < columns - 1) { // has right
+				count_dist += distance(x[row][column], x[row][column + 1]);
+
+				count_ys += y[x[row][column]][row][column].right;
+
+				//count_bad_ys += y[x[row][column + 1]][row][column].right;
+			}
+
+			count_singleton += singletonPotential(row, column, x[row][column]);
+
+
+		}
+	}
+	int afp = compute_APF_cost();
+	if (count_dist != count_ys || count_singleton+ count_dist != afp) {
+		std::cout << count_dist << " " << count_ys << " " << std::endl;
+
+		std::cout << count_singleton + count_dist << " " << count_singleton + count_ys << " " << afp  << std::endl;// << " " << count_singleton + count_bad_ys << std::endl;
+		exit(-13);
+	}
+
+	//std::cout << "good " << count_singleton + count_dist << " " << count_singleton + count_ys << " " << afp << std::endl;// << " " << count_singleton + count_bad_ys << std::endl;
+
+
+
+
+}
 
 int GridPrimalDual::truncatedSquaredDifference(const int a, const int b, const int kappa, const int truncation)
 {
@@ -472,3 +746,4 @@ int GridPrimalDual::load(int prow, int pcol, int qrow, int qcol, int a, int b)
 	}
 	throw "not adjacent";
 }
+
