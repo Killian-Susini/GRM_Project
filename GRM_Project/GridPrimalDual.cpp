@@ -225,10 +225,10 @@ void GridPrimalDual::optimize()
 			x_old[row].push_back(x[row][column]);
 		}
 	}
-	int loop_count = 0;
+	loop_count = 0;
 	bool cont = true;
 	while (cont) {
-
+		s_linked_per_outer.push_back(0);
 		std::cout << "loop n " << loop_count << std::endl;
 		for (int row = 0; row < rows; row++)
 		{
@@ -243,20 +243,8 @@ void GridPrimalDual::optimize()
 			std::cout << "innerloop c " << c << std::endl;
 			//check();
 			preEditDuals(c);
-			//std::cout << "done pre-edit n" << c << std::endl;
-			/*int primal_cost = compute_primal_cost();
-			int dual_cost = compute_dual_cost();
-			int apf = compute_APF_cost();
-			int depth = compute_height_depth();
-			primal_dual_pair.push_back(std::make_pair(primal_cost, dual_cost));
-			std::cout << "innerloop c " << c << " costs: " << primal_cost << " " << dual_cost << " " << apf << " " << depth << std::endl;*/
 			updateDualsPrimals(c);
-			//std::cout << "done duals and primals update n" << c << std::endl;
-			//std::cout << "before" << std::endl;
-			//check();
-			//std::cout << "after" << std::endl;
 			postEditDuals(c);
-			//std::cout << "done post-edit n" << c << std::endl;
 
 		}
 		for (int row = 0; row < rows; row++)
@@ -268,13 +256,6 @@ void GridPrimalDual::optimize()
 				}
 			}
 		}
-		//optimize_step++;
-		/*int primal_cost = compute_primal_cost();
-		int dual_cost = compute_dual_cost();
-		int apf = compute_APF_cost();
-		int depth = compute_height_depth();
-		primal_dual_pair.push_back(std::make_pair(primal_cost, dual_cost));
-		*/
 		loop_count++;
 		
 	}
@@ -337,11 +318,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {
 			node_id = pos2nodeIndex[row][column];
-			//printf("(%d, %d)", std::max(label_height(row, column, x[row][column]) - label_height(row, column, c), 0), std::max(label_height(row, column, c) - label_height(row, column, x[row][column]), 0));
-			//diff_height = label_height_diff(row, column, x[row][column], c);//  label_height(row, column, x[row][column]) - label_height(row, column, c);
-			//if (diff_height != height[x[row][column]][row][column] - height[c][row][column]) {
-			//	std::cout << diff_height << " " << height[x[row][column]][row][column] << " " << height[c][row][column] << std::endl;
-			//}
+			
 			diff_height = height[x[row][column]][row][column] - height[c][row][column];
 			if (diff_height > 0) {
 				g->add_terminal_cap(
@@ -360,6 +337,7 @@ void GridPrimalDual::updateDualsPrimals(int c)
 		//printf("\n");
 	}
 	printf("s link = %d\n", s_link);
+	s_linked_per_outer[loop_count] += s_link;
 	if (s_link == 0) return;
 	for (int row = 0; row < rows; row++) {
 		for (int column = 0; column < columns; column++) {

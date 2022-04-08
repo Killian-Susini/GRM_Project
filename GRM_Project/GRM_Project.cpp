@@ -14,7 +14,10 @@
 #include "GridPrimalDual.h"
 #include "Stereo.h"
 
+#include <random>
+
 #include <stdio.h>
+#include <fstream>
 
 
 int main(int argc, char* argv[])
@@ -44,11 +47,16 @@ int main(int argc, char* argv[])
         std::memcpy(disp.data, res.data(), res.size() * sizeof(uint8_t));
 
 
-        auto GPD_stereo = GridPrimalDual(disp, 16, 1, 5, 16, false);
+        auto GPD_stereo = GridPrimalDual(disp, 16, 2, 5, 16, false);
         //GPD.printPrimalDual();
 
 
         GPD_stereo.optimize();
+
+
+
+        std::ofstream outFile("s_link_per_outer.txt");
+        for (const auto& e : GPD_stereo.s_linked_per_outer) outFile << e << "\n";
 
         // make image from x
         cv::Mat optimized = cv::Mat(cv::Size(GPD_stereo.columns, GPD_stereo.rows), CV_8U);
@@ -90,11 +98,26 @@ int main(int argc, char* argv[])
         std::cout << "Image Note Found!!!" << std::endl;
         return -1;
     }
-    std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
-    cv::resize(image, image, cv::Size(256 ,256));
+    std::default_random_engine generator;
+    std::normal_distribution<> distribution{0.0, 20.0};
+
+    //cv::resize(image, image, cv::Size(64 ,64));
+
+    int rows = (int)image.rows;
+    int columns = (int)image.cols;
+    for (int row = 0; row < rows; row++) 
+    {
+        for (int column = 0; column < columns; column++)
+        {
+            image.at<uchar>(row, column) = std::max(0, std::min(255, image.at<uchar>(row, column) + (int)round(distribution(generator))));
+        }
+    }
+    //std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
+
+    
     //cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
-    std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
+    //std::cout << image.size().height << " " << image.size().width << " " << image.depth() << std::endl;
 
     //cv::imshow("window title", image);
 
@@ -106,6 +129,11 @@ int main(int argc, char* argv[])
 
     GPD.optimize();
     
+
+    std::ofstream outFile("s_link_per_outer.txt");
+    for (const auto& e : GPD.s_linked_per_outer) outFile << e << "\n";
+
+
     // make image from x
     cv::Mat greyImgForVecCopy = cv::Mat(cv::Size(GPD.columns, GPD.rows), CV_8U);
     auto vec = std::vector<uint8_t>(GPD.rows * GPD.columns, 0);
@@ -119,13 +147,17 @@ int main(int argc, char* argv[])
 
     std::memcpy(greyImgForVecCopy.data, vec.data(), vec.size() * sizeof(uint8_t));
 
-    cv::imwrite("smoothed_pep.png", greyImgForVecCopy);
+    cv::imwrite("smoothed_img.png", greyImgForVecCopy);
 
-    cv::imwrite("orig_pep.png", image);
+    cv::imwrite("noisy_img.png", image);
 
     cv::waitKey(0);
     cv::destroyAllWindows();
     
+
+
+
+
 
     return 0;
 

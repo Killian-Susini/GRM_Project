@@ -18,16 +18,10 @@
     <ClCompile Include="GRM_Project.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Graph.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="GridPrimalDual.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Stereo.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PrimalDualMRF.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GraphTree.cpp">
@@ -35,16 +29,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Graph.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GridPrimalDual.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Stereo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PrimalDualMRF.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GraphTree.h">

@@ -146,18 +146,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Graph.cpp" />
     <ClCompile Include="GraphTree.cpp" />
     <ClCompile Include="GridPrimalDual.cpp" />
     <ClCompile Include="GRM_Project.cpp" />
-    <ClCompile Include="PrimalDualMRF.cpp" />
     <ClCompile Include="Stereo.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Graph.h" />
     <ClInclude Include="GraphTree.h" />
     <ClInclude Include="GridPrimalDual.h" />
-    <ClInclude Include="PrimalDualMRF.h" />
     <ClInclude Include="Stereo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -129,9 +129,9 @@ int GraphTree::max_flow()
 		flow += augment(p);
 		adopt();
 	}
-
-	int sflow = 0, tflow = 0, s_sat = 0;
 	node* u;
+	/*int sflow = 0, tflow = 0, s_sat = 0;
+	
 	for (u = nodes; u != node_max; u++)
 	{
 		if (u->is_connected_to_source) {
@@ -146,7 +146,7 @@ int GraphTree::max_flow()
 		}
 
 	}
-	std::cout << "num_sat " << s_sat << "s and t " << sflow << " " << tflow << std::endl;
+	std::cout << "num_sat " << s_sat << "s and t " << sflow << " " << tflow << std::endl;*/
 
 	// mark nodes that are reachable
 	std::stack<node*> node_stack;

@@ -18,7 +18,7 @@ struct NodesNeighboors {
 class GridPrimalDual
 {
 public:
-	int rows, columns, number_of_labels, distance_multiplier, dist_trunc, singleton_trunc;
+	int rows, columns, number_of_labels, distance_multiplier, dist_trunc, singleton_trunc, loop_count;
 	bool use_squared;
 	cv::Mat image;
 	std::vector < std::vector< int >> x;
@@ -28,7 +28,7 @@ public:
 	GraphTree* g;
 
 
-	std::vector<std::pair<int, int>> primal_dual_pair;
+	std::vector<int> s_linked_per_outer;
 
 	//int optimize_step;
 	
